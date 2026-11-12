@@ -11,6 +11,7 @@ class DirectionRun(Base):
     mooring_b_id:Mapped[int]=mapped_column(ForeignKey('moorings.id'))
     permutations:Mapped[int]=mapped_column(default=499)
     seed:Mapped[int]=mapped_column(default=157)
+    method:Mapped[str]=mapped_column(String(20),default='record',server_default='record')
     status:Mapped[str]=mapped_column(String(20),default='queued')
     result:Mapped[dict]=mapped_column(JSON,default=dict)
     error:Mapped[str]=mapped_column(String(700),default='')

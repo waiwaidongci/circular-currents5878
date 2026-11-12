@@ -5,6 +5,9 @@ export interface Bearing{id:number;survey_id:number;mooring_id:number;code:strin
 export interface Histogram{lower:number;upper:number;count:number;proportion:number;fitted_probability:number|null}
 export interface CircularGroup{n:number;mean_bearing:number|null;resultant:number;second_resultant:number;circular_variance:number;kappa:number|null;fit_status:string;histogram:Histogram[];warning:string}
 export interface Energy{statistic:number;p_value:number;extreme:number;permutations:number;seed:number;null_statistics:number[];null_quantiles:number[];definition:string}
-export interface Run{id:number;name:string;survey_id:number;mooring_a_id:number;mooring_b_id:number;status:string;permutations:number;seed:number;result:{a?:CircularGroup;b?:CircularGroup;energy?:Energy;fingerprint?:string;interpretation?:string};error:string;created_at:string}
+export interface DailyDay{date:string;a_mean:number;b_mean:number;a_n:number;b_n:number;a_resultant:number;b_resultant:number}
+export interface DailyExclusion{date:string;reason:string;a_n:number;b_n:number}
+export interface DailyPairing{timezone:string;paired_days:number;included:DailyDay[];excluded:DailyExclusion[]}
+export interface Run{id:number;name:string;survey_id:number;mooring_a_id:number;mooring_b_id:number;status:string;permutations:number;seed:number;method:string;result:{method?:string;a?:CircularGroup;b?:CircularGroup;energy?:Energy;daily?:DailyPairing;fingerprint?:string;interpretation?:string};error:string;created_at:string}
 export interface Note{id:number;title:string;run_id:number;interpretation:string;action:string;status:string;approved_by:string;review_comment:string}
 export interface Audit{id:number;actor:string;action:string;target:string;created_at:string}

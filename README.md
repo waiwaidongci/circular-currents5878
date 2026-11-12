@@ -31,8 +31,9 @@ docker compose exec -T backend python -m scripts.seed_demo
 4. 09:25 阅读圆周均值、R、R₂、κ和12扇区比例；0–30°与330–360°在图上相邻。
 5. 09:30 对“同向集中度研究”再比较整体分布：实测均值39.40°/45.52°，κ2.015/16.063。
 6. 09:40 对“相反双峰研究”运行：一阶合向量近零，均值不定义，图不画均值线与无方向的单峰模型。
-7. 10:00 起草补测说明，记录独立时段和方向标定复核，不将p解释为成因。
-8. 10:10 沈岬以admin审阅，许帆以viewer下载含输入SHA256的CSV。
+7. 09:50 阅读“UTC按日配对研究”：A每日8条UTC、B每日3条UTC+8，9个共同UTC日等权，4个日期因缺测或均值不定义未纳入。
+8. 10:00 起草补测说明，记录独立时段和方向标定复核，不将p解释为成因。
+9. 10:10 沈岬以admin审阅，许帆以viewer下载含输入SHA256的CSV。
 
 ## 实体、页面与代码
 
@@ -62,6 +63,12 @@ R<1e−8时均值方向为空、单峰集中度MLE为0；1−R<1e−8时集中�
 
 每组2–250有限角度、99–999置换；同浮标不得同时引用。360、NaN、Inf、bool等非法角度返回422；空组保留明确failed任务。研究保存原始输入快照、配置、零分布和SHA256，新增采样不会改写旧结果。
 
+## 按日配对研究
+
+两座浮标采样频率不同时，逐条比较会被密集采样日主导。按日配对（method=daily）要求采样时刻为带时区的ISO 8601，统一到UTC日期后每天每浮标各算圆周均值；仅双方均值都有定义的日期进入比较，每天等权，共同日期须2–250天。置换只在同一UTC日内交换浮标标签（每日一次符号翻转），V统计量与上尾+1口径同逐条研究。
+
+无效或无时区的时刻拒绝计算，任务以明确原因failed；结果JSON列出未纳入日期及原因（仅单侧有采样、日均值不定义），配置、结果和获批CSV均标明record/daily方法。旧数据与旧研究默认record，逐条口径、指纹与导出行为不变。
+
 ## 技术与配置
 
 | 层 | 实现 |
@@ -74,7 +81,7 @@ R<1e−8时均值方向为空、单峰集中度MLE为0；1−R<1e−8时集中�
 
 五服务恰好frontend/backend/worker/db/redis，均有健康检查；backend/worker依赖db/redis healthy，frontend依赖backend healthy。数据库、Redis和共享artifacts命名卷。COMPOSE_PROJECT_NAME=circular-currents；FRONTEND_PORT/BACKEND_PORT/DB_PORT=18229/19229/17729，另有MYSQL_DATABASE/USER/PASSWORD/ROOT_PASSWORD、JWT_SECRET、SEED_DEMO，见.env.example。中文父目录可启动。
 
-SEED_DEMO=true自动seed，异常只记日志；脚本可独立执行。初始3账号、2浮标、3期×2×120=720角度、1研究和1批准说明；自然键只增缺失，不覆盖备注或已有研究。固定seed157/158/159生成三种形状。QA新增调查、运行和说明与seed数量分开记录。
+SEED_DEMO=true自动seed，异常只记日志；脚本可独立执行。初始3账号、2浮标、3期×2×120加1期UTC按日（88+30）共838角度、逐条与按日各1研究和1批准说明；自然键只增缺失，不覆盖备注或已有研究。固定seed157/158/159生成三种形状，seed160生成按日配对演示。QA新增调查、运行和说明与seed数量分开记录。
 
 本地开发启动db/redis，安装requirements并设DATABASE_URL/REDIS_URL/JWT_SECRET，运行`uvicorn src.main:app --reload`和`python -m src.worker`；前端`npm ci && npm run dev`，/api代理19229。迁移目录说明metadata初始化，无生产增量升级。测试/CSV/截图/TESTING在批次test-artifacts/gb-0025；MIT见LICENSE。
 
@@ -84,4 +91,5 @@ SEED_DEMO=true自动seed，异常只记日志；脚本可独立执行。初始3�
 - von Mises单峰描述，无均值/κ置信区间；R₂为描述阈值，少量观测尤其不稳。
 - energy比较分布，小p不代表效应大小或成因；重复研究未作跨研究多重校正，不自动行动。
 - JSON输入已规范角度，不把未知角度归零；每组最多250条/999置换，未做生产压测。
+- 按日配对以UTC日均值代替日内分布，丢失日内形状与自相关信息；无时区或无效时刻只能用于逐条研究，按日配对拒绝计算。
 - 单worker无running恢复/事务outbox，中断需另建任务；metadata首建表，Google字体离线回退。

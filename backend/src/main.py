@@ -3,16 +3,20 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import text,inspect
 from src.config.database import Base,engine
 from src.config.queue import queue
 from src import models
 from src.routes import auth,surveys,moorings,bearings,runs,notes,audits
 from src.middlewares.request_guard import RequestGuard
 from src.middlewares.error_handler import ErrorHandler
+def ensure_schema():
+    with engine.begin() as conn:
+        if 'method' not in {c['name'] for c in inspect(conn).get_columns('direction_runs')}:conn.execute(text("ALTER TABLE direction_runs ADD COLUMN method VARCHAR(20) NOT NULL DEFAULT 'record'"))
 @asynccontextmanager
 async def lifespan(app):
     Base.metadata.create_all(engine)
+    ensure_schema()
     if os.getenv('SEED_DEMO','true').lower()=='true':
         try:
             from scripts.seed_demo import seed

@@ -20,4 +20,4 @@ def compute(db,id):
     for mooring_id in [run.mooring_a_id,run.mooring_b_id]:
         items=db.scalars(select(BearingReading).where(BearingReading.survey_id==run.survey_id,BearingReading.mooring_id==mooring_id).order_by(BearingReading.code)).all()
         rows.append([{'code':x.code,'bearing':x.bearing,'observed_at':x.observed_at} for x in items])
-    run.result=analyze(*rows,{'survey_id':run.survey_id,'mooring_a_id':run.mooring_a_id,'mooring_b_id':run.mooring_b_id,'permutations':run.permutations,'seed':run.seed});run.status=RunStatus.COMPLETED;run.error='';db.commit();return serialize(run)
+    run.result=analyze(*rows,{'survey_id':run.survey_id,'mooring_a_id':run.mooring_a_id,'mooring_b_id':run.mooring_b_id,'permutations':run.permutations,'seed':run.seed,'method':run.method or 'record'});run.status=RunStatus.COMPLETED;run.error='';db.commit();return serialize(run)

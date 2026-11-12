@@ -1,4 +1,5 @@
 import numpy as np,json
+from datetime import date,timedelta
 from sqlalchemy import select,func
 from src.config.database import Base,engine,SessionLocal
 from src.models import User,DirectionSurvey,Mooring,BearingReading,DirectionRun,ObservationNote
@@ -25,10 +26,33 @@ def seed():
                 for i,angle in enumerate(angles):
                     sample=f'{code}-{m.code}-{i+1:03d}'
                     if sample not in existing:db.add(BearingReading(survey_id=survey.id,mooring_id=m.id,code=sample,bearing=float(angle),observed_at=f'{survey.period}T{(i//6)%24:02d}:{i%6*10:02d}'))
+        db.commit()
+        survey=db.scalar(select(DirectionSurvey).where(DirectionSurvey.code=='utc-daily'))
+        if not survey:survey=DirectionSurvey(code='utc-daily',name='UTC按日配对研究',period='2026-11-04…2026-11-15',description='两浮标采样频率与时区不同：A每日8条UTC，B每日3条UTC+8；按UTC日期对齐日均值，演示按日配对口径。');db.add(survey);db.flush()
+        rng=np.random.default_rng(160);base=date(2026,11,4)
+        for k,m in enumerate(moorings):
+            existing=set(db.scalars(select(BearingReading.code).where(BearingReading.survey_id==survey.id,BearingReading.mooring_id==m.id)));seq=0
+            for d in range(12):
+                day=(base+timedelta(days=d)).isoformat()
+                if k==0:
+                    if d==6:continue
+                    angles=[90.0,270.0]*4 if d==4 else (np.rad2deg(rng.vonmises(np.deg2rad(200),3,8))%360).tolist()
+                    for h,angle in zip([1,4,7,10,13,16,19,22],angles):
+                        seq+=1;sample=f'utc-daily-{m.code}-{seq:03d}'
+                        if sample not in existing:db.add(BearingReading(survey_id=survey.id,mooring_id=m.id,code=sample,bearing=float(angle),observed_at=f'{day}T{h:02d}:00:00+00:00'))
+                else:
+                    if d in (8,9):continue
+                    for h,angle in zip([3,11,19],(np.rad2deg(rng.vonmises(np.deg2rad(215),5,3))%360).tolist()):
+                        seq+=1;sample=f'utc-daily-{m.code}-{seq:03d}'
+                        if sample not in existing:db.add(BearingReading(survey_id=survey.id,mooring_id=m.id,code=sample,bearing=float(angle),observed_at=f'{day}T{h:02d}:00:00+08:00'))
         db.commit();run=db.scalar(select(DirectionRun).where(DirectionRun.name=='跨零流向 · 初始研究'))
         if not run:
             survey=db.scalar(select(DirectionSurvey).where(DirectionSurvey.code=='cross-zero'));user=db.scalar(select(User).where(User.role=='admin'))
             run=DirectionRun(name='跨零流向 · 初始研究',survey_id=survey.id,mooring_a_id=moorings[0].id,mooring_b_id=moorings[1].id,permutations=499,seed=157,created_by=user.id);db.add(run);db.commit();compute(db,run.id)
             db.add(ObservationNote(title='跨零采样 · 观察口径',run_id=run.id,interpretation='两组均跨过0度附近，圆周差异需与采样独立性一起阅读。',action='保持协议补采独立时段，复核传感器方向标定。',status='approved',approved_by=user.email,review_comment='只作合成统计口径示范，待现场复核。',created_by=user.id));db.commit()
+        daily=db.scalar(select(DirectionRun).where(DirectionRun.name=='UTC按日 · 初始研究'))
+        if not daily:
+            survey=db.scalar(select(DirectionSurvey).where(DirectionSurvey.code=='utc-daily'));user=db.scalar(select(User).where(User.role=='admin'))
+            daily=DirectionRun(name='UTC按日 · 初始研究',survey_id=survey.id,mooring_a_id=moorings[0].id,mooring_b_id=moorings[1].id,permutations=499,seed=157,method='daily',created_by=user.id);db.add(daily);db.commit();compute(db,daily.id)
         counts={name:db.scalar(select(func.count()).select_from(model)) for name,model in [('users',User),('surveys',DirectionSurvey),('moorings',Mooring),('readings',BearingReading),('runs',DirectionRun),('notes',ObservationNote)]};print(json.dumps(counts));return counts
 if __name__=='__main__':seed()
